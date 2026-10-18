@@ -1,0 +1,9 @@
+{
+  "name": "virtuv-kids",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kids type a question and get a colorful interactive HTML answer page.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

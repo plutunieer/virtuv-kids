@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Virtuv Kids</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: system-ui, -apple-system, sans-serif; color: #2b2257;
+    background: linear-gradient(160deg, #ffe7a8 0%, #ffc4d6 45%, #b9d7ff 100%);
+  }
+  h1 { font-size: 56px; margin: 0 0 8px; letter-spacing: 1px; }
+  p.sub { font-size: 24px; margin: 0 0 32px; }
+  form { width: 80vw; display: flex; flex-direction: column; gap: 18px; align-items: center; }
+  /* U1 + U12 */
+  #q {
+    width: 80vw; font-size: 24px; padding: 22px 26px; border: 4px solid #fff; border-radius: 30px;
+    outline: none; box-shadow: 0 8px 24px rgba(80, 40, 140, .18); color: #2b2257;
+  }
+  #q:focus { border-color: #8b6cff; }
+  button {
+    font-size: 26px; font-weight: 800; color: #fff; background: #8b6cff; border: 0; border-radius: 30px;
+    padding: 16px 44px; cursor: pointer; box-shadow: 0 6px 0 #5f43d6;
+  }
+  button:active { transform: translateY(4px); box-shadow: 0 2px 0 #5f43d6; }
+  .screen { display: none; flex-direction: column; align-items: center; text-align: center; }
+  .screen.on { display: flex; }
+  /* U9: waiting animation */
+  .stars { display: flex; gap: 22px; margin: 30px 0; }
+  .stars span { font-size: 64px; animation: hop 1s ease-in-out infinite; }
+  .stars span:nth-child(2) { animation-delay: .15s; }
+  .stars span:nth-child(3) { animation-delay: .3s; }
+  @keyframes hop { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-30px) rotate(20deg); } }
+  .big { font-size: 34px; font-weight: 800; }
+  .parent { position: fixed; bottom: 12px; right: 16px; font-size: 14px; color: #6b5fa0; }
+</style>
+</head>
+<body>
+  <section id="ask" class="screen on">
+    <h1>🚀 Virtuv Kids</h1>
+    <p class="sub">Frag mich alles! · Ask me anything!</p>
+    <form id="f">
+      <input id="q" autocomplete="off" maxlength="300" placeholder="Warum ist der Himmel blau?" autofocus>
+      <button type="submit">Los! ✨</button>
+    </form>
+  </section>
+
+  <section id="wait" class="screen">
+    <div class="stars"><span>⭐</span><span>🌈</span><span>🪐</span></div>
+    <div class="big">Ich denke nach …</div>
+  </section>
+
+  <section id="no" class="screen">
+    <div style="font-size:90px">🙈</div>
+    <div class="big">Frag etwas anderes!</div>
+    <p class="sub">Ask something else!</p>
+    <button onclick="show('ask')" aria-label="Home">🏠</button>
+  </section>
+
+  <section id="err" class="screen">
+    <div style="font-size:90px">🤔</div>
+    <div class="big">Hoppla! Versuch es nochmal.</div>
+    <p class="sub"></p>
+    <button onclick="show('ask')" aria-label="Home">🏠</button>
+  </section>
+
+  <a class="parent" href="/eltern">Eltern</a>
+
+<script>
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+    if (id === 'ask') { const q = document.getElementById('q'); q.value = ''; q.focus(); }
+  }
+  // Back button on iPad restores this page from cache: start fresh instead of "thinking".
+  addEventListener('pageshow', e => { if (e.persisted) show('ask'); });
+  // U2: Enter or button submits the form.
+  document.getElementById('f').addEventListener('submit', async e => {
+    e.preventDefault();
+    const question = document.getElementById('q').value.trim();
+    if (!question) return;
+    show('wait');
+    try {
+      const r = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
+      const data = await r.json();
+      if (data.blocked) return show('no');
+      if (!data.id) throw new Error('no id');
+      location.href = '/a/' + data.id;
+    } catch {
+      show('err');
+    }
+  });
+</script>
+</body>
+</html>
