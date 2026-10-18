@@ -2,93 +2,178 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Virtuv Kids</title>
 <style>
   * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-family: system-ui, -apple-system, sans-serif; color: #2b2257;
-    background: linear-gradient(160deg, #ffe7a8 0%, #ffc4d6 45%, #b9d7ff 100%);
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  /* U17: terminal left 30%, answer right 70% */
+  body { display: flex; font-family: system-ui, -apple-system, sans-serif; background: #1E1E1E; }
+  #term {
+    width: 30%; height: 100%; display: flex; flex-direction: column;
+    background: #1E1E1E; color: #e6e6e6; /* U18 */
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 18px;
+    padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
   }
-  h1 { font-size: 56px; margin: 0 0 8px; letter-spacing: 1px; }
-  p.sub { font-size: 24px; margin: 0 0 32px; }
-  form { width: 80vw; display: flex; flex-direction: column; gap: 18px; align-items: center; }
-  /* U1 + U12 */
-  #q {
-    width: 80vw; font-size: 24px; padding: 22px 26px; border: 4px solid #fff; border-radius: 30px;
-    outline: none; box-shadow: 0 8px 24px rgba(80, 40, 140, .18); color: #2b2257;
-  }
-  #q:focus { border-color: #8b6cff; }
-  button {
-    font-size: 26px; font-weight: 800; color: #fff; background: #8b6cff; border: 0; border-radius: 30px;
-    padding: 16px 44px; cursor: pointer; box-shadow: 0 6px 0 #5f43d6;
-  }
-  button:active { transform: translateY(4px); box-shadow: 0 2px 0 #5f43d6; }
-  .screen { display: none; flex-direction: column; align-items: center; text-align: center; }
-  .screen.on { display: flex; }
+  #term .hd { color: #ffb86c; font-weight: 700; font-size: 20px; margin-bottom: 14px; }
+  #log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .entry { border-radius: 8px; padding: 6px 8px; }
+  .entry .q { color: #8be9fd; word-wrap: break-word; }
+  .entry .st { color: #9a9a9a; font-size: 15px; margin-left: 18px; }
+  .entry { cursor: pointer; }
+  .entry:hover, .entry.sel { background: #2c2c2c; }
+  .entry.sel .q { color: #50fa7b; }
+  /* U12 + U23: input line with a cursor blinking once per second */
+  #line { position: relative; margin-top: 12px; font-size: 24px; display: flex; align-items: flex-start; gap: 8px; }
+  #mirror { flex: 1; min-height: 32px; white-space: pre-wrap; word-wrap: break-word; color: #fff; }
+  #mirror::before { content: '> '; color: #50fa7b; }
+  .cur { display: inline-block; width: 12px; height: 26px; background: #50fa7b; vertical-align: -4px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  /* Invisible real input over the mirror only; the ⏎ button stays clickable. */
+  #q { position: absolute; top: 0; bottom: 0; left: 0; right: 64px; width: auto; opacity: 0; font-size: 24px; border: 0; }
+  #go { position: relative; z-index: 1; font: 700 22px system-ui, sans-serif; color: #1E1E1E; background: #50fa7b; border: 0; border-radius: 10px; padding: 2px 12px; cursor: pointer; }
+  #term a.parent { color: #666; font-size: 13px; margin-top: 10px; text-decoration: none; }
+
+  #view { width: 70%; height: 100%; position: relative; background: #fff; }
+  #view iframe { border: 0; width: 100%; height: 100%; display: block; }
+  #view iframe[hidden] { display: none; }
+  .panel { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #2b2257;
+    background: linear-gradient(160deg, #ffe7a8 0%, #ffc4d6 45%, #b9d7ff 100%); padding: 24px; }
+  .panel.on { display: flex; }
+  .panel .big { font-size: 34px; font-weight: 800; }
+  .panel .sub { font-size: 22px; margin-top: 8px; }
+  .panel .emoji { font-size: 90px; }
   /* U9: waiting animation */
-  .stars { display: flex; gap: 22px; margin: 30px 0; }
+  .stars { display: flex; gap: 22px; margin: 20px 0; }
   .stars span { font-size: 64px; animation: hop 1s ease-in-out infinite; }
   .stars span:nth-child(2) { animation-delay: .15s; }
   .stars span:nth-child(3) { animation-delay: .3s; }
   @keyframes hop { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-30px) rotate(20deg); } }
-  .big { font-size: 34px; font-weight: 800; }
-  .parent { position: fixed; bottom: 12px; right: 16px; font-size: 14px; color: #6b5fa0; }
 </style>
 </head>
 <body>
-  <section id="ask" class="screen on">
-    <h1>🚀 Virtuv Kids</h1>
-    <p class="sub">Frag mich alles! · Ask me anything!</p>
-    <form id="f">
-      <input id="q" autocomplete="off" maxlength="300" placeholder="Warum ist der Himmel blau?" autofocus>
-      <button type="submit">Los! ✨</button>
+  <section id="term">
+    <div class="hd">🚀 virtuv kids</div>
+    <div id="log"></div>
+    <form id="line">
+      <div id="mirror"></div>
+      <input id="q" autocomplete="off" autocapitalize="sentences" maxlength="300" aria-label="Frage" autofocus>
+      <button id="go" type="submit" aria-label="Senden">⏎</button>
     </form>
+    <a class="parent" href="/eltern">Eltern</a>
   </section>
 
-  <section id="wait" class="screen">
-    <div class="stars"><span>⭐</span><span>🌈</span><span>🪐</span></div>
-    <div class="big">Ich denke nach …</div>
+  <section id="view">
+    <div id="p-hello" class="panel on"><div class="emoji">👋</div><div class="big">Frag mich alles!</div><div class="sub">Ask me anything!</div></div>
+    <div id="p-wait" class="panel"><div class="stars"><span>⭐</span><span>🌈</span><span>🪐</span></div><div class="big">Ich denke nach …</div></div>
+    <div id="p-no" class="panel"><div class="emoji">🙈</div><div class="big">Frag etwas anderes!</div><div class="sub">Ask something else!</div></div>
+    <div id="p-err" class="panel"><div class="emoji">🤔</div><div class="big">Hoppla! Versuch es nochmal.</div><div class="sub">Oops! Try again.</div></div>
+    <iframe id="answer" sandbox="allow-scripts" title="Antwort" hidden></iframe>
   </section>
-
-  <section id="no" class="screen">
-    <div style="font-size:90px">🙈</div>
-    <div class="big">Frag etwas anderes!</div>
-    <p class="sub">Ask something else!</p>
-    <button onclick="show('ask')" aria-label="Home">🏠</button>
-  </section>
-
-  <section id="err" class="screen">
-    <div style="font-size:90px">🤔</div>
-    <div class="big">Hoppla! Versuch es nochmal.</div>
-    <p class="sub"></p>
-    <button onclick="show('ask')" aria-label="Home">🏠</button>
-  </section>
-
-  <a class="parent" href="/eltern">Eltern</a>
 
 <script>
-  function show(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
-    if (id === 'ask') { const q = document.getElementById('q'); q.value = ''; q.focus(); }
+  const q = document.getElementById('q');
+  const mirror = document.getElementById('mirror');
+  const log = document.getElementById('log');
+  const frame = document.getElementById('answer');
+  const entries = []; // U19: questions asked since the page opened
+  let selected = null;
+  let loadedSrc = null;
+  const canHover = matchMedia('(hover: hover)').matches;
+
+  function renderMirror() {
+    mirror.textContent = q.value;
+    const cur = document.createElement('span');
+    cur.className = 'cur';
+    mirror.appendChild(cur);
   }
-  // Back button on iPad restores this page from cache: start fresh instead of "thinking".
-  addEventListener('pageshow', e => { if (e.persisted) show('ask'); });
-  // U2: Enter or button submits the form.
-  document.getElementById('f').addEventListener('submit', async e => {
-    e.preventDefault();
-    const question = document.getElementById('q').value.trim();
+  q.addEventListener('input', renderMirror);
+  // The drawn cursor always sits at the end, so the real one stays there too.
+  document.addEventListener('selectionchange', () => {
+    const n = q.value.length;
+    if (document.activeElement === q && (q.selectionStart !== n || q.selectionEnd !== n)) q.setSelectionRange(n, n);
+  });
+  // A tap anywhere in the terminal (except on a question or link) starts typing.
+  document.getElementById('term').addEventListener('click', ev => {
+    if (!ev.target.closest('.entry, a')) q.focus();
+  });
+  renderMirror();
+
+  // Shows the state of the selected entry in the right panel.
+  function showEntry(e) {
+    selected = e;
+    entries.forEach(x => x.el.classList.toggle('sel', x === e));
+    const panel = { wait: 'p-wait', blocked: 'p-no', error: 'p-err' }[e.state];
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === panel));
+    if (e.state === 'done') {
+      // U20: the answer appears in the right panel, the page itself never changes.
+      const src = '/a/' + e.id + '/raw';
+      if (loadedSrc === src) {
+        frame.hidden = false;
+        return;
+      }
+      // Keep the stars until the answer page has loaded, so the panel never flashes white.
+      frame.hidden = true;
+      document.getElementById('p-wait').classList.add('on');
+      frame.onload = () => {
+        loadedSrc = src;
+        if (selected !== e) return;
+        document.getElementById('p-wait').classList.remove('on');
+        frame.hidden = false;
+      };
+      if (frame.getAttribute('src') !== src) {
+        loadedSrc = null;
+        frame.src = src;
+      }
+    } else {
+      frame.hidden = true;
+    }
+  }
+
+  const STATUS = { wait: '⏳ …', done: '✓ fertig', blocked: '🙈 Frag etwas anderes!', error: '🤔 Hoppla!' };
+  function setState(e, state, id) {
+    e.state = state;
+    if (id) e.id = id;
+    e.el.querySelector('.st').textContent = STATUS[state];
+    e.el.classList.toggle('done', state === 'done');
+    if (selected === e) showEntry(e);
+  }
+
+  // U2 + U21: Enter or ⏎ submits; the next question can be typed at any time.
+  document.getElementById('line').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const question = q.value.trim();
     if (!question) return;
-    show('wait');
+    q.value = '';
+    renderMirror();
+    q.focus();
+
+    const el = document.createElement('div');
+    el.className = 'entry';
+    el.innerHTML = '<div class="q"></div><div class="st"></div>';
+    el.querySelector('.q').textContent = '> ' + question;
+    const e = { el, state: 'wait' };
+    el.addEventListener('click', () => { showEntry(e); if (canHover) q.focus(); }); // U22
+    entries.push(e);
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    setState(e, 'wait');
+    showEntry(e);
+
     try {
-      const r = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
+      let r;
+      // Server busy with other answers: keep waiting and try again.
+      for (let tries = 0; tries < 60; tries++) {
+        r = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
+        if (r.status !== 429) break;
+        await new Promise(res => setTimeout(res, 3000));
+      }
       const data = await r.json();
-      if (data.blocked) return show('no');
+      if (data.blocked) return setState(e, 'blocked');
       if (!data.id) throw new Error('no id');
-      location.href = '/a/' + data.id;
+      setState(e, 'done', data.id);
     } catch {
-      show('err');
+      setState(e, 'error');
     }
   });
 </script>
